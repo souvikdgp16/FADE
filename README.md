@@ -1,3 +1,3 @@
 # FADE
 
-Code will be released soon. Thanks!
+Data and code will be released soon. Thanks!
