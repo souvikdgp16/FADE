@@ -1,3 +1,3 @@
-# FADE
+# FADE: Diving Deep into Modes of Fact Hallucinations in Dialogue Systems
 
-Data and code will be released soon. Thanks!
+Code will be released soon. Thanks!
