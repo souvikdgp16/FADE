@@ -1,21 +1,8 @@
-import pandas as pd
-from pprint import pprint
-from tqdm import tqdm
 import numpy as np
-import ast
-from itertools import chain
-import pickle
-import spacy
-import networkx as nx
-from typing import List, Tuple, Optional, Set, Dict
-import os
-from pathlib import Path
-from collections import defaultdict
-import pickle
-from spacy.training import offsets_to_biluo_tags
-from sklearn.metrics.pairwise import cosine_similarity
 from rank_bm25 import BM25Okapi
 from .utils import *
+from numpy import dot
+from numpy.linalg import norm
 
 
 class IntrinsicSoft(Annotator):
@@ -24,6 +11,17 @@ class IntrinsicSoft(Annotator):
                          kge_dir=kge_dir,
                          ext_entities=ext_entities)
 
+    def vectorize(self, tuple):
+        for i, t in enumerate(tuple):
+            if i == 0:
+                vector = self.e / (self.e + self.unigram_model[t]) * self.kge.node_embds[t]
+            elif i == 1:
+                vector += self.e / (self.e + self.unigram_model[t]) * self.kge.rel_embds[t]
+            else:
+                vector += self.e / (self.e + self.unigram_model[t]) * self.kge.node_embds[t]
+
+        return vector
+
     def create_dataset(self, dialogue, verbose=True):
         try:
             if len(dialogue["knowledge_base"]["paths"]) > 0:
@@ -31,6 +29,7 @@ class IntrinsicSoft(Annotator):
                 og_triples = []
                 triples = []
                 docs = []
+                docs_vectors = []
 
                 for ent in dialogue["knowledge_base"]["paths"]:
                     if ent[2].lower() in dialogue["response"].lower():
@@ -64,13 +63,19 @@ class IntrinsicSoft(Annotator):
 
                     for t in triples:
                         docs.append(f"{t[0]} {t[1]} {t[2]}")
+                        docs_vectors.append(self.vectorize(t))
+
+                    query_vector = self.vectorize(og_triple)
+                    query_vector = np.array(query_vector)
+                    docs_vectors = np.array(docs_vectors)
+                    cos_sim = dot(query_vector, docs_vectors.T) / (norm(query_vector) * norm(docs_vectors)).tolist()[0]
 
                     tokenized_corpus = [doc.split(" ") for doc in docs]
-
                     bm25 = BM25Okapi(tokenized_corpus)
                     query = " ".join(og_triple)
                     tokenized_query = query.split(" ")
                     doc_scores = bm25.get_scores(tokenized_query)
+                    doc_scores += cos_sim
                     index = np.argsort(doc_scores)[-1]
                     corrupt_entity = triples[index][0]
                     corrupt_entity_rel = list(dict(triples[index][1]).keys())[0]
@@ -94,7 +99,8 @@ class IntrinsicSoft(Annotator):
                         print(f"Corrupted response is: {corrupt_response}")
                         print(50 * "=")
 
-                return corrupt_response, list(set([s[1] for s in replace_list])), list(set([s[2] for s in replace_list])), og_entities
+                return corrupt_response, list(set([s[1] for s in replace_list])), list(
+                    set([s[2] for s in replace_list])), og_entities
             else:
                 return dialogue["response"].lower(), None, None, None
         except Exception as e:

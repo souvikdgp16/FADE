@@ -1,19 +1,3 @@
-import pandas as pd
-from pprint import pprint
-from tqdm import tqdm
-import numpy as np
-import ast
-from itertools import chain
-import pickle
-import spacy
-import networkx as nx
-from typing import List, Tuple, Optional, Set, Dict
-import os
-from pathlib import Path
-from collections import defaultdict
-import pickle
-from spacy.training import offsets_to_biluo_tags
-from sklearn.metrics.pairwise import cosine_similarity
 from .utils import *
 
 
@@ -41,7 +25,8 @@ class IntrinsicRepetitive(Annotator):
     def create_dataset(self, dialogue, verbose=True):
         try:
             if len(dialogue["knowledge_base"]["paths"]) > 0:
-                repetitive_entities = self.history_entities(dialogue['history'], dialogue["knowledge_base"]['paths'], dialogue['response'])
+                repetitive_entities = self.history_entities(dialogue['history'], dialogue["knowledge_base"]['paths'],
+                                                            dialogue['response'])
                 print(repetitive_entities)
                 og_entities = []
                 replace_list = []
@@ -56,7 +41,7 @@ class IntrinsicRepetitive(Annotator):
 
                 og_entities = list(set(og_entities))
 
-                #corrupt_entity = repetitive_entities[0]
+                # corrupt_entity = repetitive_entities[0]
                 corrupt_response = dialogue["response"].lower()
 
                 for i, og_entity in enumerate(og_entities):

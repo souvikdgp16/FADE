@@ -7,15 +7,28 @@ from collections import defaultdict
 import networkx as nx
 from sentence_transformers import SentenceTransformer
 from typing import List, Tuple, Optional, Set, Dict
+from calculate_unigram_probability import *
+
+CORPUS_PATH = ""
+
+
+def load_corpus(cp):
+    with open(cp) as f:
+        lines = f.readlines()
+
+    return lines
 
 
 class Annotator:
-    def __init__(self, freebase_file: str, kge_dir: str, ext_entities:Dict):
+    def __init__(self, freebase_file: str, kge_dir: str, ext_entities: Dict):
         self.nlp = spacy.load("en_core_web_sm")
         self.sent_transformer = SentenceTransformer('bert-base-nli-mean-tokens', device="cpu")
         self.kg = self.load_kg(freebase_file)
         self.kge = KnowledgeGraphEmbedding(kge_dir)
         self.ext_entities = ext_entities
+        self.corpus = load_corpus(CORPUS_PATH)
+        self.unigram_model = unigram(CORPUS_PATH)
+        self.e = 0.01
 
     def extract_ent(self, text: str) -> List:
         doc = self.nlp(text)
@@ -134,12 +147,12 @@ class KnowledgeGraphEmbedding:
         return 0
 
     def resize(
-        self,
-        new_ents: Optional[Set[str]] = None,
-        new_rels: Optional[Set[str]] = None,
-        dataset_path: str = None,
-        init_mean: float = 0.0,
-        init_std: float = 1.0,
+            self,
+            new_ents: Optional[Set[str]] = None,
+            new_rels: Optional[Set[str]] = None,
+            dataset_path: str = None,
+            init_mean: float = 0.0,
+            init_std: float = 1.0,
     ) -> Tuple[int, int]:
         if dataset_path is None:
             assert new_ents is not None and new_rels is not None
@@ -176,13 +189,13 @@ class KnowledgeGraphEmbedding:
 
     @classmethod
     def _resize_embeddings(
-        cls,
-        new_objs: Set[str],
-        obj2id: Dict[str, int],
-        id2obj: Dict[int, str],
-        embds: np.ndarray,
-        init_mean: float,
-        init_std: float,
+            cls,
+            new_objs: Set[str],
+            obj2id: Dict[str, int],
+            id2obj: Dict[int, str],
+            embds: np.ndarray,
+            init_mean: float,
+            init_std: float,
     ):
         new_embs = np.random.normal(init_mean, init_std, (len(new_objs), embds.shape[-1]))
         next_id = embds.shape[0]
